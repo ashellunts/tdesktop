@@ -36,7 +36,8 @@ constexpr auto kSha256Size = 32;
 void AppendEndpoint(
 		std::vector<TgVoipEndpoint> &list,
 		const MTPPhoneConnection &connection) {
-	connection.match([&](const MTPDphoneConnection &data) {
+	// commented part of code causes internal compiler error in VS 16.7 preview
+	/*connection.match([&](const MTPDphoneConnection &data) {
 		if (data.vpeer_tag().v.length() != 16) {
 			return;
 		}
@@ -53,7 +54,7 @@ void AppendEndpoint(
 			memcpy(endpoint.peerTag, tag.data(), 16);
 		}
 		list.push_back(std::move(endpoint));
-	});
+	});*/
 }
 
 constexpr auto kFingerprintDataSize = 256;
