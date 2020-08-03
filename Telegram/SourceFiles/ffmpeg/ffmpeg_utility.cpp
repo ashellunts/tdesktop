@@ -160,6 +160,20 @@ void FormatDeleter::operator()(AVFormatContext *value) {
 	}
 }
 
+static AVBufferRef* hw_device_ctx = NULL;
+static enum AVPixelFormat hw_pix_fmt = AV_PIX_FMT_DXVA2_VLD;
+
+static enum AVPixelFormat get_hw_format(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts)
+{
+	const enum AVPixelFormat* p;
+	for (p = pix_fmts; *p != -1; p++) {
+		if (*p == hw_pix_fmt)
+			return *p;
+	}
+	fprintf(stderr, "Failed to get HW surface format.\n");
+	return AV_PIX_FMT_NONE;
+}
+
 CodecPointer MakeCodecPointer(not_null<AVStream*> stream) {
 	auto error = AvErrorWrap();
 
@@ -181,10 +195,26 @@ CodecPointer MakeCodecPointer(not_null<AVStream*> stream) {
 	if (!codec) {
 		LogError(qstr("avcodec_find_decoder"), context->codec_id);
 		return {};
-	} else if ((error = avcodec_open2(context, codec, nullptr))) {
-		LogError(qstr("avcodec_open2"), error);
-		return {};
 	}
+	else
+	{
+		context->get_format = get_hw_format;
+
+		av_opt_set_int(context, "refcounted_frames", 1, 0);
+		int err = 0;
+		if ((err = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_DXVA2, NULL, NULL, 0)) < 0)
+		{
+			fprintf(stderr, "Failed to create specified HW device.\n");
+			return {};
+		}
+		context->hw_device_ctx = av_buffer_ref(hw_device_ctx);
+
+		if ((error = avcodec_open2(context, codec, nullptr))) {
+			LogError(qstr("avcodec_open2"), error);
+			return {};
+		}
+	}
+
 	return result;
 }
 

@@ -167,6 +167,7 @@ Stream File::Context::initStream(
 	}
 
 	result.frame = FFmpeg::MakeFramePointer();
+	result.hw_frame = FFmpeg::MakeFramePointer();
 	if (!result.frame) {
 		result.codec = nullptr;
 		return result;

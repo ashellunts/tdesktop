@@ -92,7 +92,7 @@ private:
 	// Main thread wrapper destructor will set _shared back to nullptr.
 	// All queued method calls after that should be discarded.
 	Shared *_shared = nullptr;
-
+	int _presentedFrames = 0;
 	Stream _stream;
 	AudioMsgId _audioId;
 	bool _readTillEnd = false;
@@ -238,9 +238,15 @@ void VideoTrackObject::readFrames() {
 				queueReadFrames(delay);
 			}
 		}, [](std::nullopt_t) {
+			//nullopt
+			// int x = 0;
 		});
 		if (result.has_value()) {
 			break;
+		}
+		else
+		{
+			// int y = 0;
 		}
 	}
 }
@@ -384,6 +390,10 @@ void VideoTrackObject::presentFrameIfNeeded() {
 		_options.speed,
 		dropStaleFrames,
 		rasterize);
+
+	_presentedFrames++;
+
+
 	addTimelineDelay(presented.addedWorldTimeDelay);
 	if (presented.displayPosition == kFinishedPosition) {
 		interrupt();
@@ -507,6 +517,7 @@ bool VideoTrackObject::tryReadFirstFrame(FFmpeg::Packet &&packet) {
 		std::swap(_initialSkippingFrame, _stream.frame);
 		if (!_stream.frame) {
 			_stream.frame = FFmpeg::MakeFramePointer();
+			_stream.hw_frame = FFmpeg::MakeFramePointer();
 		}
 	}
 }

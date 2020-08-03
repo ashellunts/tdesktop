@@ -30,6 +30,7 @@ struct Stream {
 	crl::time duration = kTimeUnknown;
 	AVRational timeBase = FFmpeg::kUniversalTimeBase;
 	FFmpeg::CodecPointer codec;
+	FFmpeg::FramePointer hw_frame;
 	FFmpeg::FramePointer frame;
 	std::deque<FFmpeg::Packet> queue;
 	int invalidDataPackets = 0;

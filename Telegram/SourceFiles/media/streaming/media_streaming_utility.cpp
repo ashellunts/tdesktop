@@ -20,13 +20,13 @@ constexpr auto kSkipInvalidDataPackets = 10;
 } // namespace
 
 crl::time FramePosition(const Stream &stream) {
-	const auto pts = !stream.frame
+	const auto pts = !stream.hw_frame
 		? AV_NOPTS_VALUE
-		: (stream.frame->best_effort_timestamp != AV_NOPTS_VALUE)
-		? stream.frame->best_effort_timestamp
-		: (stream.frame->pts != AV_NOPTS_VALUE)
-		? stream.frame->pts
-		: stream.frame->pkt_dts;
+		: (stream.hw_frame->best_effort_timestamp != AV_NOPTS_VALUE)
+		? stream.hw_frame->best_effort_timestamp
+		: (stream.hw_frame->pts != AV_NOPTS_VALUE)
+		? stream.hw_frame->pts
+		: stream.hw_frame->pkt_dts;
 	return FFmpeg::PtsToTime(pts, stream.timeBase);
 }
 
@@ -71,10 +71,20 @@ FFmpeg::AvErrorWrap ReadNextFrame(Stream &stream) {
 	do {
 		error = avcodec_receive_frame(
 			stream.codec.get(),
-			stream.frame.get());
+			stream.hw_frame.get());
 		if (!error
 			|| error.code() != AVERROR(EAGAIN)
-			|| stream.queue.empty()) {
+			|| stream.queue.empty())
+		{
+			if (stream.hw_frame->format == AV_PIX_FMT_DXVA2_VLD)
+			{
+				/* retrieve data from GPU to CPU */
+				int ret = av_hwframe_transfer_data(stream.frame.get(), stream.hw_frame.get(), 0);
+				if (ret < 0) {
+					fprintf(stderr, "Error transferring the data to system memory\n");
+					return error;
+				}
+			}
 			return error;
 		}
 
